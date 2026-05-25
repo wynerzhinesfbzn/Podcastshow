@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PodCraft — AI Подкаст Генератор</title>
+  <style>
+    :root {
+      --bg:#f4f6fb;--surface:#ffffff;--surface2:#f0f2f9;--border:#e2e6f0;
+      --text:#1a1d2e;--text-muted:#6b7280;--accent:#6366f1;--accent-hover:#4f46e5;
+      --accent-light:#eef2ff;--success:#10b981;--danger:#ef4444;--warn:#f59e0b;
+      --shadow:0 2px 16px rgba(99,102,241,.10);--radius:14px;
+      --host-color:#6366f1;--guest-color:#f59e0b;
+    }
+    [data-theme="dark"]{
+      --bg:#0f1117;--surface:#1a1d2e;--surface2:#232640;--border:#2e3358;
+      --text:#e8eaf6;--text-muted:#8b91b8;--accent:#818cf8;--accent-hover:#6366f1;
+      --accent-light:#1e2044;--shadow:0 2px 24px rgba(0,0,0,.5);--guest-color:#fbbf24;
+    }
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Inter',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+    header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;display:flex;align-items:center;justify-content:space-between;height:64px;position:sticky;top:0;z-index:100;box-shadow:var(--shadow)}
+    .logo{display:flex;align-items:center;gap:10px;font-size:22px;font-weight:800;color:var(--accent);letter-spacing:-.5px}
+    .logo span{color:var(--text)}
+    .theme-btn{background:var(--surface2);border:1px solid var(--border);border-radius:50px;padding:6px 16px;cursor:pointer;font-size:14px;color:var(--text)}
+    main{max-width:960px;margin:0 auto;padding:36px 20px 80px}
+    .hero{text-align:center;margin-bottom:32px}
+    .hero h1{font-size:32px;font-weight:800;margin-bottom:8px}
+    .hero h1 em{color:var(--accent);font-style:normal}
+    .hero p{color:var(--text-muted);font-size:15px}
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:26px;margin-bottom:18px;box-shadow:var(--shadow)}
+    .card-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1.2px;color:var(--accent);margin-bottom:16px}
+
+    /* ── Mode selector ── */
+    .mode-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:580px){.mode-grid{grid-template-columns:1fr}}
+    .mode-card{border:3px solid var(--border);border-radius:14px;padding:22px 18px;cursor:pointer;transition:all .2s;background:var(--surface2);text-align:center}
+    .mode-card:hover{border-color:var(--accent);transform:translateY(-2px)}
+    .mode-card.selected{border-color:var(--accent);background:var(--accent-light)}
+    .mode-card .micon{font-size:42px;margin-bottom:8px}
+    .mode-card .mname{font-size:17px;font-weight:800;margin-bottom:5px}
+    .mode-card.selected .mname{color:var(--accent)}
+    .mode-card .mdesc{font-size:12px;color:var(--text-muted);line-height:1.5}
+    .mode-card .mtags{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+    .mtag{font-size:11px;padding:3px 10px;background:var(--surface);border:1px solid var(--border);border-radius:50px;font-weight:600}
+    .mode-card.selected .mtag{background:var(--accent);color:white;border-color:var(--accent)}
+
+    /* ── Input ── */
+    .input-tabs{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+    .input-tab{padding:7px 16px;border-radius:50px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;font-size:13px;font-weight:500;color:var(--text-muted)}
+    .input-tab.active{background:var(--accent);color:white;border-color:var(--accent)}
+    .input-panel{display:none}
+    .input-panel.active{display:block}
+    textarea,input[type="text"],input[type="url"]{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:13px 15px;font-size:14px;color:var(--text);outline:none;transition:border-color .2s;font-family:inherit}
+    textarea:focus,input:focus{border-color:var(--accent)}
+    textarea{resize:vertical;min-height:150px}
+    .file-drop{border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;color:var(--text-muted)}
+    .file-drop:hover{border-color:var(--accent);background:var(--accent-light)}
+
+    /* ── Names ── */
+    .names-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:580px){.names-row{grid-template-columns:1fr}}
+    .name-field label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:7px}
+    .dot{width:10px;height:10px;border-radius:50%}
+    .host-dot{background:var(--host-color)}
+    .guest-dot{background:var(--guest-color)}
+
+    /* ── Personality presets ── */
+    .personalities-section{margin-bottom:18px}
+    .persona-role-label{font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+    .persona-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+    @media(max-width:640px){.persona-grid{grid-template-columns:repeat(2,1fr)}}
+    .persona-card{border:2px solid var(--border);border-radius:12px;padding:12px 10px;text-align:center;cursor:pointer;background:var(--surface2);transition:all .15s}
+    .persona-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+    .persona-card.selected{border-color:var(--accent);background:var(--accent-light)}
+    .persona-card .picon{font-size:26px;margin-bottom:5px}
+    .persona-card .pname{font-size:12px;font-weight:700;margin-bottom:3px}
+    .persona-card.selected .pname{color:var(--accent)}
+    .persona-card .pshort{font-size:10px;color:var(--text-muted);line-height:1.3}
+    .persona-card .pvoice{display:inline-block;margin-top:6px;font-size:10px;padding:2px 8px;background:var(--surface);border:1px solid var(--border);border-radius:50px;font-weight:600}
+    .persona-card.selected .pvoice{background:var(--accent);color:white;border-color:var(--accent)}
+    .play-preview-btn{display:inline-flex;align-items:center;gap:4px;margin-top:6px;padding:3px 10px;background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:50px;font-size:10px;font-weight:700;cursor:pointer;width:100%;justify-content:center}
+    .play-preview-btn:hover{background:var(--accent);color:white}
+    .play-preview-btn.playing{background:var(--accent);color:white}
+
+    /* ── Style grid ── */
+    .style-grid{display:flex;flex-wrap:wrap;gap:10px}
+    .style-card{flex:1 1 calc(20% - 10px);min-width:80px;border:2px solid var(--border);border-radius:12px;padding:14px 8px;text-align:center;cursor:pointer;font-size:13px;font-weight:500;color:var(--text-muted);background:var(--surface2)}
+    .style-card .si{font-size:26px;margin-bottom:6px}
+    .style-card:hover{border-color:var(--accent)}
+    .style-card.selected{border-color:var(--accent);background:var(--accent-light);color:var(--accent);font-weight:700}
+
+    /* ── Language ── */
+    .lang-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+    @media(max-width:580px){.lang-grid{grid-template-columns:repeat(3,1fr)}}
+    .lang-card{border:2px solid var(--border);border-radius:10px;padding:9px 6px;text-align:center;cursor:pointer;font-size:12px;font-weight:500;color:var(--text-muted);background:var(--surface2)}
+    .lang-card:hover{border-color:var(--accent)}
+    .lang-card.selected{border-color:var(--accent);background:var(--accent-light);color:var(--accent);font-weight:700}
+
+    /* ── Music ── */
+    .music-section-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+    .btn-refresh-music{display:flex;align-items:center;gap:6px;padding:7px 16px;background:var(--surface2);border:1px solid var(--border);border-radius:50px;font-size:13px;font-weight:600;color:var(--text-muted);cursor:pointer;transition:all .2s}
+    .btn-refresh-music:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+    .btn-refresh-music .spin{display:inline-block;transition:transform .4s}
+    .btn-refresh-music:active .spin{transform:rotate(180deg)}
+    .music-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    @media(max-width:580px){.music-grid{grid-template-columns:1fr}}
+    .music-card{border:2px solid var(--border);border-radius:12px;padding:14px;background:var(--surface2);cursor:pointer;transition:all .15s}
+    .music-card:hover{border-color:var(--accent)}
+    .music-card.selected{border-color:var(--accent);background:var(--accent-light)}
+    .music-card .mtrack-name{font-size:14px;font-weight:700;margin-bottom:5px}
+    .music-card.selected .mtrack-name{color:var(--accent)}
+    .music-card .mtrack-mood{font-size:11px;color:var(--text-muted);line-height:1.4;margin-bottom:10px;min-height:28px}
+    .music-card.selected .mtrack-mood{color:var(--accent);opacity:.85}
+    .music-card-footer{display:flex;align-items:center;gap:8px}
+    .btn-music-play{display:flex;align-items:center;gap:5px;padding:5px 12px;border:1px solid var(--border);border-radius:50px;background:var(--surface);cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);flex-shrink:0}
+    .btn-music-play:hover{border-color:var(--accent);color:var(--accent)}
+    .btn-music-play.playing{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+
+    /* ── Slider ── */
+    .slider-wrap{display:flex;align-items:center;gap:14px}
+    input[type="range"]{flex:1;accent-color:var(--accent)}
+    .slider-val{background:var(--accent);color:white;padding:4px 12px;border-radius:50px;font-size:14px;font-weight:700;min-width:64px;text-align:center}
+
+    /* ── Generate button ── */
+    .btn-generate{width:100%;padding:18px;background:linear-gradient(135deg,var(--accent),var(--accent-hover));color:white;border:none;border-radius:12px;font-size:17px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:8px;transition:all .2s}
+    .btn-generate:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(99,102,241,.4)}
+    .btn-generate:disabled{opacity:.6;cursor:not-allowed;transform:none}
+
+    /* ── Progress ── */
+    .progress-section{display:none;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:26px;margin-bottom:18px}
+    .progress-section.visible{display:block}
+    .progress-label{display:flex;justify-content:space-between;margin-bottom:10px}
+    .progress-pct{font-weight:700;color:var(--accent);font-size:16px}
+    .progress-bar-bg{height:12px;background:var(--surface2);border-radius:50px;overflow:hidden}
+    .progress-bar-fill{height:100%;background:linear-gradient(90deg,var(--accent),#a5b4fc);border-radius:50px;transition:width .8s ease}
+    .steps-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+    .step-badge{padding:5px 14px;border-radius:50px;font-size:12px;font-weight:600;border:1px solid var(--border);background:var(--surface2);color:var(--text-muted);display:flex;align-items:center;gap:5px}
+    .step-badge.done{background:#d1fae5;border-color:#6ee7b7;color:#065f46}
+    .step-badge.active{background:var(--accent-light);border-color:var(--accent);color:var(--accent);animation:pulse 1.5s infinite}
+    [data-theme="dark"] .step-badge.done{background:#064e3b;border-color:#10b981;color:#6ee7b7}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
+
+    /* ── Results ── */
+    .results-section{display:none}
+    .results-section.visible{display:block}
+    .tabs{display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:22px}
+    .tab-btn{padding:11px 22px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:600;color:var(--text-muted);border-bottom:3px solid transparent;margin-bottom:-2px}
+    .tab-btn:hover{color:var(--text)}
+    .tab-btn.active{color:var(--accent);border-bottom-color:var(--accent)}
+    .tab-content{display:none}
+    .tab-content.active{display:block}
+    .media-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:26px;box-shadow:var(--shadow)}
+    video{width:100%;border-radius:10px;margin-bottom:16px;background:#000}
+    .btn-download{display:inline-flex;align-items:center;gap:8px;padding:11px 22px;background:var(--accent);color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;text-decoration:none}
+    .btn-download:hover{background:var(--accent-hover)}
+
+    /* ── Audio player ── */
+    .speaker-display{display:flex;align-items:center;gap:18px;background:var(--surface2);border:1px solid var(--border);border-radius:14px;padding:18px 22px;margin-bottom:14px}
+    .speaker-av{width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;flex-shrink:0}
+    .speaker-av.host{background:var(--accent-light);color:var(--accent)}
+    .speaker-av.guest{background:#fef3c7;color:#92400e}
+    [data-theme="dark"] .speaker-av.guest{background:#451a03;color:#fcd34d}
+    .speaker-info{flex:1;min-width:0}
+    .speaker-role-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-bottom:2px}
+    .speaker-name-big{font-size:19px;font-weight:800;margin-bottom:5px}
+    .speaker-text-prv{font-size:13px;color:var(--text-muted);line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:480px}
+    .waveform{display:flex;align-items:center;gap:3px;height:38px}
+    .wbar{width:4px;background:var(--accent);border-radius:2px;height:5px;transition:height .1s}
+    .waveform.playing .wbar{animation:waveAnim 1s ease-in-out infinite}
+    .waveform.playing .wbar:nth-child(1){animation-delay:0s}.waveform.playing .wbar:nth-child(2){animation-delay:.1s}
+    .waveform.playing .wbar:nth-child(3){animation-delay:.2s}.waveform.playing .wbar:nth-child(4){animation-delay:.05s}
+    .waveform.playing .wbar:nth-child(5){animation-delay:.15s}.waveform.playing .wbar:nth-child(6){animation-delay:.25s}
+    .waveform.playing .wbar:nth-child(7){animation-delay:.08s}.waveform.playing .wbar:nth-child(8){animation-delay:.18s}
+    .waveform.playing .wbar:nth-child(9){animation-delay:.12s}.waveform.playing .wbar:nth-child(10){animation-delay:.22s}
+    .waveform.playing .wbar:nth-child(11){animation-delay:.04s}.waveform.playing .wbar:nth-child(12){animation-delay:.16s}
+    @keyframes waveAnim{0%,100%{height:5px}50%{height:30px}}
+    .waveform.host .wbar{background:var(--host-color)}
+    .waveform.guest .wbar{background:var(--guest-color)}
+    .audio-controls{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:50px;padding:10px 18px}
+    .a-btn{width:38px;height:38px;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:15px;transition:all .15s}
+    .a-play{background:var(--accent);color:white;font-size:17px;width:44px;height:44px}
+    .a-play:hover{background:var(--accent-hover);transform:scale(1.08)}
+    .a-skip{background:var(--surface2);color:var(--text-muted)}
+    .a-skip:hover{background:var(--border)}
+    .a-prog{flex:1;display:flex;align-items:center;gap:8px}
+    .a-prog input[type="range"]{flex:1;height:4px;cursor:pointer}
+    .a-time{font-size:11px;color:var(--text-muted);font-weight:600;white-space:nowrap;font-family:monospace}
+    .a-vol{display:flex;align-items:center;gap:6px}
+    .a-vol input[type="range"]{width:65px;height:3px}
+    .timeline-list{display:flex;flex-direction:column;gap:5px;max-height:240px;overflow-y:auto;margin-top:16px;padding-right:4px}
+    .tl-item{display:flex;gap:9px;align-items:flex-start;padding:9px 12px;border-radius:10px;cursor:pointer;border:1.5px solid transparent;transition:all .12s}
+    .tl-item:hover{background:var(--surface2)}
+    .tl-item.active{background:var(--accent-light);border-color:var(--accent)}
+    .tl-av{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0}
+    .tl-av.host{background:var(--accent-light);color:var(--accent)}
+    .tl-av.guest{background:#fef3c7;color:#92400e}
+    [data-theme="dark"] .tl-av.guest{background:#451a03;color:#fcd34d}
+    .tl-name{font-size:10px;font-weight:700;margin-bottom:2px}
+    .tl-name.host{color:var(--accent)}
+    .tl-name.guest{color:var(--guest-color)}
+    .tl-txt{font-size:12px;color:var(--text-muted);line-height:1.4}
+    .tl-item.active .tl-txt{color:var(--text)}
+
+    /* ── Narrator ── */
+    .narrator-section{margin-bottom:18px}
+    .narrator-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+    @media(max-width:580px){.narrator-grid{grid-template-columns:repeat(2,1fr)}}
+    .narrator-card{border:2px solid var(--border);border-radius:12px;padding:12px 10px;text-align:center;cursor:pointer;background:var(--surface2);transition:all .15s}
+    .narrator-card:hover{border-color:#10b981;transform:translateY(-1px)}
+    .narrator-card.selected{border-color:#10b981;background:#ecfdf5}
+    [data-theme="dark"] .narrator-card.selected{background:#022c22}
+    .narrator-card .picon{font-size:26px;margin-bottom:5px}
+    .narrator-card .pname{font-size:12px;font-weight:700;margin-bottom:3px}
+    .narrator-card.selected .pname{color:#10b981}
+    .narrator-card .pshort{font-size:10px;color:var(--text-muted);line-height:1.3}
+    .narrator-card .pvoice{display:inline-block;margin-top:6px;font-size:10px;padding:2px 8px;background:var(--surface);border:1px solid var(--border);border-radius:50px;font-weight:600}
+    .narrator-card.selected .pvoice{background:#10b981;color:white;border-color:#10b981}
+    .narrator-card .play-preview-btn{border-color:#10b981;color:#10b981}
+    .narrator-card .play-preview-btn:hover,.narrator-card .play-preview-btn.playing{background:#10b981;color:white;border-color:#10b981}
+    .narrator-info-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px 16px;font-size:13px;color:#166534;margin-bottom:14px;display:flex;gap:12px;align-items:flex-start;line-height:1.5}
+    [data-theme="dark"] .narrator-info-box{background:#022c22;border-color:#166534;color:#86efac}
+    .narrator-info-box .ni-icon{font-size:22px;flex-shrink:0}
+    .desc-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:12px}
+    @media(max-width:580px){.desc-row{grid-template-columns:1fr}}
+    .desc-field label{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:700;color:var(--text-muted);margin-bottom:7px}
+    /* ── Narrator in player ── */
+    .speaker-av.narrator{background:#ecfdf5;color:#10b981}
+    [data-theme="dark"] .speaker-av.narrator{background:#022c22;color:#34d399}
+    .tl-av.narrator{background:#ecfdf5;color:#10b981}
+    [data-theme="dark"] .tl-av.narrator{background:#022c22;color:#34d399}
+    .tl-name.narrator{color:#10b981}
+    .tl-item.narrator-line{background:#f0fdf4;border-color:#bbf7d0}
+    [data-theme="dark"] .tl-item.narrator-line{background:#022c22;border-color:#166534}
+    .tl-item.narrator-line .tl-txt{font-style:italic;color:#166534}
+    [data-theme="dark"] .tl-item.narrator-line .tl-txt{color:#86efac}
+    .waveform.narrator .wbar{background:#10b981}
+
+    /* ── Track list ── */
+    .track-list{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+    .track-item{display:flex;align-items:center;gap:12px;padding:11px 14px;border:2px solid var(--border);border-radius:10px;cursor:pointer;background:var(--surface2)}
+    .track-item:hover{border-color:var(--accent)}
+    .track-item.active{border-color:var(--accent);background:var(--accent-light)}
+    .track-name{font-size:14px;font-weight:600;flex:1}
+    .track-status{font-size:11px;padding:3px 10px;background:var(--accent);color:white;border-radius:50px;font-weight:700}
+    .spinner{width:18px;height:18px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .rebuild-progress{display:none;margin-top:10px;align-items:center;gap:10px;font-size:14px;color:var(--accent)}
+    .rebuild-progress.visible{display:flex}
+
+    /* ── Examples ── */
+    .examples-toggle{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:12px 22px;margin-bottom:20px;background:var(--surface);border:2px dashed var(--border);border-radius:var(--radius);cursor:pointer;font-size:14px;font-weight:600;color:var(--text-muted)}
+    .examples-toggle:hover{border-color:var(--accent);color:var(--accent);background:var(--accent-light)}
+    .examples-panel{display:none;margin-bottom:18px}
+    .examples-panel.open{display:block}
+    .dial-line{display:flex;gap:10px;margin-bottom:10px}
+    .dial-av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+    .dial-av.host{background:var(--accent-light);color:var(--accent)}
+    .dial-av.guest{background:#fef3c7;color:#92400e}
+    [data-theme="dark"] .dial-av.guest{background:#451a03;color:#fcd34d}
+    .dial-bubble{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;font-size:13px;line-height:1.6;flex:1}
+    .dial-label{font-size:10px;font-weight:700;color:var(--text-muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.8px}
+    .output-formats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    @media(max-width:580px){.output-formats{grid-template-columns:1fr}}
+    .format-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px;text-align:center}
+    .format-card .ficon{font-size:30px;margin-bottom:7px}
+    .format-card .fname{font-size:13px;font-weight:700;margin-bottom:3px}
+    .format-card .fdesc{font-size:11px;color:var(--text-muted);line-height:1.4}
+
+    /* ── Voice clone ── */
+    .clone-info-box{background:#f0f4ff;border:1px solid #c7d2fe;border-radius:12px;padding:14px 16px;font-size:13px;color:#3730a3;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start;line-height:1.5}
+    [data-theme="dark"] .clone-info-box{background:#1e2044;border-color:#4338ca;color:#a5b4fc}
+    .clone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+    @media(max-width:640px){.clone-grid{grid-template-columns:1fr}}
+    .clone-zone{display:flex;flex-direction:column;gap:6px}
+    .clone-role{font-size:12px;font-weight:700;color:var(--text-muted);display:flex;align-items:center;gap:6px;margin-bottom:4px}
+    .clone-drop{border:2px dashed var(--border);border-radius:12px;padding:18px 10px;text-align:center;cursor:pointer;background:var(--surface2);transition:all .2s;position:relative}
+    .clone-drop:hover{border-color:var(--accent);background:var(--accent-light)}
+    .clone-drop.has-file{border-color:#10b981;background:#f0fdf4;border-style:solid}
+    [data-theme="dark"] .clone-drop.has-file{background:#022c22;border-color:#10b981}
+    .clone-drop.drag-over{border-color:var(--accent);background:var(--accent-light)}
+    .clone-icon{font-size:26px;margin-bottom:5px}
+    .clone-label{font-size:11px;color:var(--text-muted);font-weight:600;margin-bottom:3px}
+    .clone-formats{font-size:10px;color:var(--text-muted);opacity:.7}
+    .clone-clear{background:none;border:1px solid var(--border);border-radius:50px;padding:3px 10px;font-size:11px;color:var(--danger);cursor:pointer;align-self:center}
+    .clone-clear:hover{background:#fee2e2;border-color:var(--danger)}
+    [data-theme="dark"] .clone-clear:hover{background:#450a0a}
+    .clone-sample-audio{width:100%;margin-top:6px;height:32px}
+    .clone-badge{display:inline-block;font-size:10px;padding:2px 8px;background:#10b981;color:white;border-radius:50px;font-weight:700;margin-left:6px}
+
+    /* ── Misc ── */
+    .error-banner{background:#fee2e2;border:1px solid #fca5a5;color:#7f1d1d;padding:13px 16px;border-radius:10px;margin-bottom:14px;font-size:14px;display:none}
+    [data-theme="dark"] .error-banner{background:#450a0a;border-color:#ef4444;color:#fca5a5}
+    .error-banner.visible{display:block}
+    .warn-box{background:#fef3c7;border:1px solid #fcd34d;color:#78350f;padding:11px 14px;border-radius:10px;margin-top:14px;font-size:13px;display:none}
+    [data-theme="dark"] .warn-box{background:#451a03;border-color:#f59e0b;color:#fcd34d}
+    .warn-box.visible{display:block}
+    .style-hidden{display:none!important}
+    #voiceToast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:50px;box-shadow:0 4px 24px rgba(0,0,0,.2);padding:11px 22px;display:flex;align-items:center;gap:12px;opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;min-width:240px}
+    #voiceToast.visible{opacity:1;pointer-events:all}
+    #voiceToastClose{cursor:pointer;font-size:18px;color:var(--text-muted);background:none;border:none}
+    footer{text-align:center;color:var(--text-muted);font-size:13px;padding:28px}
+  </style>
+</head>
+<body>
+<header>
+  <div class="logo">🎙 Pod<span>Craft</span></div>
+  <button class="theme-btn" onclick="toggleTheme()"><span id="themeIcon">🌙</span> <span id="themeLabel">Тёмная тема</span></button>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Создай <em>профессиональный подкаст</em> из любого текста</h1>
+    <p>Вставь текст или статью — AI напишет живой диалог и озвучит профессиональными голосами</p>
+  </div>
+
+  <div id="errorBanner" class="error-banner"></div>
+
+  <button class="examples-toggle" onclick="toggleExamples()">👀 Посмотреть пример результата <span id="exArrow">▼</span></button>
+  <div class="examples-panel" id="examplesPanel">
+    <div class="card">
+      <div class="card-title">💬 Пример — как звучит диалог</div>
+      <div style="background:var(--surface2);border-radius:12px;padding:16px;margin-bottom:14px">
+        <div class="dial-line"><div class="dial-av host">🎙</div><div class="dial-bubble"><div class="dial-label">Ведущий · Алексей · Радиоведущий</div>Знаете, сегодня мы разбираем тему, которая меняет буквально всё. Мария, ты ведь изучала этот вопрос — с чего начнём?</div></div>
+        <div class="dial-line"><div class="dial-av guest">🎧</div><div class="dial-bubble"><div class="dial-label">Гость · Мария · Эмоциональный</div>Алексей, я честно не ожидала насколько это глубоко! Вот это да... Начнём с самого неочевидного факта — он переворачивает всю картину!</div></div>
+        <div class="dial-line"><div class="dial-av host">🎙</div><div class="dial-bubble"><div class="dial-label">Ведущий · Алексей</div>Именно — и это ключевой момент, друзья. Итак, давайте разберём по порядку...</div></div>
+      </div>
+      <p style="font-size:12px;color:var(--text-muted);text-align:center">GPT пишет живой диалог с учётом характера каждого ведущего → AI озвучивает без акцентов</p>
+      <div class="output-formats" style="margin-top:14px">
+        <div class="format-card"><div class="ficon">🎧</div><div class="fname">MP3 — Аудио</div><div class="fdesc">Диалог + фоновая музыка с ducking</div></div>
+        <div class="format-card"><div class="ficon">🎬</div><div class="fname">MP4 — Видео</div><div class="fdesc">Анимированные слайды (Ken Burns)</div></div>
+        <div class="format-card"><div class="ficon">📊</div><div class="fname">PPTX — Слайды</div><div class="fdesc">Для PowerPoint / Google Slides</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="formSection">
+
+    <!-- 0. Тип -->
+    <div class="card">
+      <div class="card-title">🎯 Шаг 1 — Тип подкаста</div>
+      <div class="mode-grid">
+        <div class="mode-card selected" data-mode="audio" onclick="selectMode(this)">
+          <div class="micon">🎧</div>
+          <div class="mname">Аудиоподкаст</div>
+          <div class="mdesc">Только диалог + музыка. Анимированный плеер показывает кто говорит.</div>
+          <div class="mtags"><span class="mtag">🎧 MP3</span><span class="mtag">⚡ Быстро</span></div>
+        </div>
+        <div class="mode-card" data-mode="video" onclick="selectMode(this)">
+          <div class="micon">🎬</div>
+          <div class="mname">Видеоподкаст</div>
+          <div class="mdesc">Аудио + анимированные иллюстрации DALL-E 3 с Ken Burns эффектами + PPTX.</div>
+          <div class="mtags"><span class="mtag">🎧 MP3</span><span class="mtag">🎬 MP4</span><span class="mtag">📊 PPTX</span></div>
+        </div>
+      </div>
+      <input type="hidden" id="podcast_mode" value="audio" />
+    </div>
+
+    <!-- 1. Материал -->
+    <div class="card">
+      <div class="card-title">📄 Шаг 2 — Исходный материал</div>
+      <div class="input-tabs">
+        <button class="input-tab active" onclick="switchInputTab('text',this)">✏️ Текст</button>
+        <button class="input-tab" onclick="switchInputTab('file',this)">📁 Файл</button>
+        <button class="input-tab" onclick="switchInputTab('url',this)">🔗 Ссылка</button>
+      </div>
+      <div class="input-panel active" id="panel-text">
+        <textarea id="text_input" placeholder="Вставьте текст статьи, лекции, новости... Чем больше — тем насыщеннее подкаст."></textarea>
+      </div>
+      <div class="input-panel" id="panel-file">
+        <div class="file-drop" onclick="document.getElementById('fileInput').click()">
+          <div style="font-size:34px;margin-bottom:6px">📂</div>
+          <div style="font-size:14px;font-weight:600;margin-bottom:3px">Нажмите или перетащите файл</div>
+          <div style="font-size:12px">Поддерживаются: .txt .pdf .docx</div>
+        </div>
+        <input type="file" id="fileInput" accept=".txt,.pdf,.docx" style="display:none" onchange="handleFileSelect(this)" />
+        <div id="fileName" style="margin-top:8px;font-size:13px;color:var(--accent);font-weight:600"></div>
+      </div>
+      <div class="input-panel" id="panel-url">
+        <input type="url" id="url_input" placeholder="https://example.com/article" />
+      </div>
+    </div>
+
+    <!-- 2. Имена -->
+    <div class="card">
+      <div class="card-title">👤 Шаг 3 — Имена ведущих</div>
+      <div class="names-row">
+        <div class="name-field">
+          <label><span class="dot host-dot"></span> Ведущий A (Host)</label>
+          <input type="text" id="host_name" value="Алексей" placeholder="Имя ведущего..." maxlength="40" />
+        </div>
+        <div class="name-field">
+          <label><span class="dot guest-dot"></span> Ведущий B (Guest)</label>
+          <input type="text" id="guest_name" value="Мария" placeholder="Имя гостя..." maxlength="40" />
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. Характер ведущих -->
+    <div class="card">
+      <div class="card-title">🎭 Шаг 4 — Характер ведущих</div>
+      <div class="personalities-section">
+        <div class="persona-role-label">
+          <span class="dot host-dot"></span>
+          Характер ведущего A — <span id="hostNameLbl">Алексей</span>:
+        </div>
+        <div class="persona-grid" id="hostPersonaGrid">
+          {% for p in voice_personalities %}
+          <div class="persona-card {% if loop.first %}selected{% endif %}"
+               data-id="{{ p.id }}" data-voice="{{ p.voice }}" data-style="{{ p.style }}"
+               onclick="selectPersona('host', this)">
+            <div class="picon">{{ p.label.split(' ')[0] }}</div>
+            <div class="pname">{{ p.label.split(' ', 1)[1] if ' ' in p.label else p.label }}</div>
+            <div class="pshort">{{ p.short }}</div>
+            <div class="pvoice">{{ p.voice }}</div>
+            <button class="play-preview-btn" onclick="playVoicePreview('{{ p.voice }}', this, event)">▶ Слушать</button>
+          </div>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="host_voice" value="{{ voice_personalities[0].voice }}" />
+        <input type="hidden" id="host_style" value="{{ voice_personalities[0].style }}" />
+      </div>
+
+      <div class="personalities-section" style="margin-top:20px">
+        <div class="persona-role-label">
+          <span class="dot guest-dot"></span>
+          Характер ведущего B — <span id="guestNameLbl">Мария</span>:
+        </div>
+        <div class="persona-grid" id="guestPersonaGrid">
+          {% for p in voice_personalities %}
+          <div class="persona-card {% if loop.index == 3 %}selected{% endif %}"
+               data-id="{{ p.id }}" data-voice="{{ p.voice }}" data-style="{{ p.style }}"
+               onclick="selectPersona('guest', this)">
+            <div class="picon">{{ p.label.split(' ')[0] }}</div>
+            <div class="pname">{{ p.label.split(' ', 1)[1] if ' ' in p.label else p.label }}</div>
+            <div class="pshort">{{ p.short }}</div>
+            <div class="pvoice">{{ p.voice }}</div>
+            <button class="play-preview-btn" onclick="playVoicePreview('{{ p.voice }}', this, event)">▶ Слушать</button>
+          </div>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="guest_voice" value="{{ voice_personalities[2].voice }}" />
+        <input type="hidden" id="guest_style" value="{{ voice_personalities[2].style }}" />
+      </div>
+    </div>
+
+    <!-- 4b. Нарратор -->
+    <div class="card">
+      <div class="card-title">📢 Шаг 5 — Голос диктора (нарратора)</div>
+      <div class="narrator-info-box">
+        <span class="ni-icon">📢</span>
+        <div>
+          <strong>Диктор — это отдельный профессиональный голос</strong>, который открывает шоу, представляет ведущих и гостей по имени и краткому описанию, делает переходы между темами и закрывает эфир. Он никогда не участвует в дискуссии — только ведёт.
+        </div>
+      </div>
+
+      <div class="narrator-section">
+        <div class="persona-role-label">
+          <span style="font-size:14px">📢</span>
+          Голос диктора — <span id="narratorNameLbl">Диктор</span>:
+        </div>
+        <div class="narrator-grid" id="narratorGrid">
+          {% for p in narrator_presets %}
+          <div class="narrator-card {% if loop.first %}selected{% endif %}"
+               data-id="{{ p.id }}" data-voice="{{ p.voice }}" data-style="{{ p.style }}"
+               onclick="selectNarrator(this)">
+            <div class="picon">{{ p.label.split(' ')[0] }}</div>
+            <div class="pname">{{ p.label.split(' ', 1)[1] if ' ' in p.label else p.label }}</div>
+            <div class="pshort">{{ p.short }}</div>
+            <div class="pvoice">{{ p.voice }}</div>
+            <button class="play-preview-btn" onclick="playVoicePreview('{{ p.voice }}', this, event)">▶ Слушать</button>
+          </div>
+          {% endfor %}
+        </div>
+        <input type="hidden" id="narrator_voice" value="{{ narrator_presets[0].voice }}" />
+        <input type="hidden" id="narrator_style" value="{{ narrator_presets[0].style }}" />
+      </div>
+
+      <div class="name-field" style="max-width:340px">
+        <label>📢 Имя диктора (для интро)</label>
+        <input type="text" id="narrator_name" value="Диктор" placeholder="Имя диктора..." maxlength="40"
+               oninput="document.getElementById('narratorNameLbl').textContent = this.value || 'Диктор'" />
+      </div>
+
+      <div style="margin-top:18px">
+        <div class="persona-role-label" style="margin-bottom:8px">🪪 Краткое описание ведущих для диктора <span style="font-weight:400;font-size:10px;color:var(--text-muted)">(необязательно)</span></div>
+        <p style="font-size:12px;color:var(--text-muted);margin-bottom:12px">Диктор назовёт имена и должности/роли ведущих в интро подкаста. Например: "опытный аналитик в сфере AI" или "автор канала по истории".</p>
+        <div class="desc-row">
+          <div class="desc-field">
+            <label><span class="dot host-dot"></span> Кто такой <span id="hdescHostName">Алексей</span>?</label>
+            <input type="text" id="host_description" placeholder="Например: технологический аналитик, автор книги..." maxlength="120" />
+          </div>
+          <div class="desc-field">
+            <label><span class="dot guest-dot"></span> Кто такой/такая <span id="hdescGuestName">Мария</span>?</label>
+            <input type="text" id="guest_description" placeholder="Например: профессор МГУ, специалист по..." maxlength="120" />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4c. Клонирование голоса -->
+    <div class="card">
+      <div class="card-title">🧬 Шаг 5.5 — Клонирование голоса <span style="font-size:10px;font-weight:400;color:var(--text-muted);letter-spacing:0">(необязательно)</span></div>
+      <div class="clone-info-box">
+        <span style="font-size:22px;flex-shrink:0">🎤</span>
+        <div>
+          <strong>Загрузи образец своего голоса</strong> — AI синтезирует подкаст именно твоим голосом. Минимум 3 секунды чистой речи. Любой аудиоформат: MP3, WAV, OGG, M4A, FLAC, AAC... Можно загрузить до 3 разных голосов.
+        </div>
+      </div>
+      <div class="clone-grid">
+
+        <!-- Голос ведущего -->
+        <div class="clone-zone">
+          <div class="clone-role">
+            <span class="dot host-dot"></span>
+            Ведущий — <span id="hostNameForClone">Ведущий</span>
+          </div>
+          <div class="clone-drop" id="cloneDropHost"
+               onclick="document.getElementById('hostVoiceSample').click()"
+               ondragover="cloneDragOver(event,'Host')" ondragleave="cloneDragLeave('Host')" ondrop="cloneDrop(event,'host','Host')">
+            <div class="clone-icon">🎙</div>
+            <div class="clone-label" id="cloneLabelHost">Нажми или перетащи аудио</div>
+            <div class="clone-formats">MP3 · WAV · OGG · M4A · FLAC · AAC</div>
+          </div>
+          <input type="file" id="hostVoiceSample" accept="audio/*" style="display:none"
+                 onchange="handleVoiceSample('host','Host',this)">
+          <audio id="hostSamplePreview" class="clone-sample-audio" controls style="display:none"></audio>
+          <button class="clone-clear" id="clearHostSample" style="display:none"
+                  onclick="clearVoiceSample('host','Host')">✕ Удалить образец</button>
+        </div>
+
+        <!-- Голос гостя -->
+        <div class="clone-zone">
+          <div class="clone-role">
+            <span class="dot guest-dot"></span>
+            Гость — <span id="guestNameForClone">Гость</span>
+          </div>
+          <div class="clone-drop" id="cloneDropGuest"
+               onclick="document.getElementById('guestVoiceSample').click()"
+               ondragover="cloneDragOver(event,'Guest')" ondragleave="cloneDragLeave('Guest')" ondrop="cloneDrop(event,'guest','Guest')">
+            <div class="clone-icon">🎧</div>
+            <div class="clone-label" id="cloneLabelGuest">Нажми или перетащи аудио</div>
+            <div class="clone-formats">MP3 · WAV · OGG · M4A · FLAC · AAC</div>
+          </div>
+          <input type="file" id="guestVoiceSample" accept="audio/*" style="display:none"
+                 onchange="handleVoiceSample('guest','Guest',this)">
+          <audio id="guestSamplePreview" class="clone-sample-audio" controls style="display:none"></audio>
+          <button class="clone-clear" id="clearGuestSample" style="display:none"
+                  onclick="clearVoiceSample('guest','Guest')">✕ Удалить образец</button>
+        </div>
+
+        <!-- Голос диктора -->
+        <div class="clone-zone">
+          <div class="clone-role">
+            <span style="font-size:10px;background:#10b981;color:white;padding:2px 6px;border-radius:4px;font-weight:700">📢</span>
+            Диктор — <span id="narratorNameForClone">Диктор</span>
+          </div>
+          <div class="clone-drop" id="cloneDropNarrator"
+               onclick="document.getElementById('narratorVoiceSample').click()"
+               ondragover="cloneDragOver(event,'Narrator')" ondragleave="cloneDragLeave('Narrator')" ondrop="cloneDrop(event,'narrator','Narrator')">
+            <div class="clone-icon">📢</div>
+            <div class="clone-label" id="cloneLabelNarrator">Нажми или перетащи аудио</div>
+            <div class="clone-formats">MP3 · WAV · OGG · M4A · FLAC · AAC</div>
+          </div>
+          <input type="file" id="narratorVoiceSample" accept="audio/*" style="display:none"
+                 onchange="handleVoiceSample('narrator','Narrator',this)">
+          <audio id="narratorSamplePreview" class="clone-sample-audio" controls style="display:none"></audio>
+          <button class="clone-clear" id="clearNarratorSample" style="display:none"
+                  onclick="clearVoiceSample('narrator','Narrator')">✕ Удалить образец</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 4d. Стиль (видео) -->
+    <div class="card style-hidden" id="styleCard">
+      <div class="card-title">🎨 Шаг 6 — Стиль иллюстраций</div>
+      <div class="style-grid">
+        <div class="style-card selected" data-value="anime" onclick="selectStyle(this)"><div class="si">🌸</div>Аниме</div>
+        <div class="style-card" data-value="cinematic" onclick="selectStyle(this)"><div class="si">🎬</div>Кино</div>
+        <div class="style-card" data-value="cartoon" onclick="selectStyle(this)"><div class="si">🖍️</div>Мультфильм</div>
+        <div class="style-card" data-value="futurism" onclick="selectStyle(this)"><div class="si">🚀</div>Футуризм</div>
+        <div class="style-card" data-value="infographic" onclick="selectStyle(this)"><div class="si">📊</div>Инфографика</div>
+      </div>
+      <input type="hidden" id="selected_style" value="anime" />
+    </div>
+
+    <!-- 5. Язык -->
+    <div class="card">
+      <div class="card-title">🌍 Шаг <span class="step-lang-n">6</span> — Язык подкаста</div>
+      <div class="lang-grid" id="langGrid">
+        {% for l in languages %}
+        <div class="lang-card {% if loop.first %}selected{% endif %}" data-value="{{ l.id }}" onclick="selectLang(this)">{{ l.label }}</div>
+        {% endfor %}
+      </div>
+      <input type="hidden" id="selected_language" value="{{ languages[0].id }}" />
+    </div>
+
+    <!-- 6. Длительность -->
+    <div class="card">
+      <div class="card-title">⏱ Шаг <span class="step-dur-n">7</span> — Длительность</div>
+      <div class="slider-wrap">
+        <span style="font-size:13px;color:var(--text-muted)">1 мин</span>
+        <input type="range" id="duration" min="1" max="15" value="3" oninput="updateDuration(this.value)" />
+        <span style="font-size:13px;color:var(--text-muted)">15 мин</span>
+        <div class="slider-val" id="durationVal">~3 мин</div>
+      </div>
+      <p style="margin-top:8px;font-size:12px;color:var(--text-muted)">Для теста: 2–3 минуты. Дольше — лучше качество, но больше ожидание.</p>
+    </div>
+
+    <!-- 7. Музыка -->
+    <div class="card">
+      <div class="card-title">
+        <div class="music-section-header" style="margin-bottom:0">
+          <span>🎵 Шаг <span class="step-mus-n">8</span> — Фоновая музыка</span>
+          <button class="btn-refresh-music" onclick="refreshMusic()" title="Показать другие треки">
+            <span class="spin">🔄</span> Обновить
+          </button>
+        </div>
+      </div>
+      <div class="music-grid" id="musicGrid"></div>
+      <input type="hidden" id="selected_music" value="calm" />
+    </div>
+
+    <button class="btn-generate" id="generateBtn" onclick="startGeneration()">
+      🎧 Создать аудиоподкаст
+    </button>
+  </div>
+
+  <!-- Прогресс -->
+  <div class="progress-section" id="progressSection">
+    <div class="card-title">⚙️ Генерация — это займёт несколько минут</div>
+    <div class="progress-label">
+      <span id="progressMsg" style="font-size:13px;color:var(--text-muted)">Инициализация...</span>
+      <span class="progress-pct" id="progressPct">0%</span>
+    </div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="steps-list">
+      <div class="step-badge" id="step-dialogue">💬 Диалог</div>
+      <div class="step-badge" id="step-tts">🎤 Озвучка</div>
+      <div class="step-badge" id="step-audio">🎵 Аудио</div>
+      <div class="step-badge" id="step-images" data-video-only style="display:none">🖼 Иллюстрации</div>
+      <div class="step-badge" id="step-video" data-video-only style="display:none">🎬 Видео</div>
+      <div class="step-badge" id="step-pptx" data-video-only style="display:none">📊 PPTX</div>
+    </div>
+  </div>
+
+  <!-- Результаты -->
+  <div class="results-section" id="resultsSection">
+    <div id="warnBox" class="warn-box"></div>
+    <div class="tabs" id="resultTabs">
+      <button class="tab-btn active" onclick="switchTab('audio',this)">🎧 Аудиоподкаст</button>
+      <button class="tab-btn" id="tabVideoBtn" style="display:none" onclick="switchTab('video',this)">🎬 Видео</button>
+      <button class="tab-btn" id="tabPptxBtn" style="display:none" onclick="switchTab('pptx',this)">📊 Слайды</button>
+    </div>
+
+    <!-- Аудио -->
+    <div class="tab-content active" id="tab-audio">
+      <div class="media-card">
+        <h3 style="margin-bottom:4px;font-size:18px">🎧 Аудиоподкаст</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Живой диалог с фоновой музыкой</p>
+        <div class="speaker-display" id="speakerDisplay">
+          <div class="speaker-av host" id="speakerAv">🎙</div>
+          <div class="speaker-info">
+            <div class="speaker-role-lbl" id="speakerRole">ВЕДУЩИЙ</div>
+            <div class="speaker-name-big" id="speakerName">—</div>
+            <div class="speaker-text-prv" id="speakerText">Нажмите ▶ для воспроизведения</div>
+          </div>
+          <div class="waveform" id="waveform">
+            <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+            <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+            <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+            <div class="wbar"></div><div class="wbar"></div><div class="wbar"></div>
+          </div>
+        </div>
+        <div class="audio-controls">
+          <button class="a-btn a-skip" onclick="audioSkip(-15)" title="−15 сек">⏪</button>
+          <button class="a-btn a-play" id="audioPlayBtn" onclick="toggleAudio()">▶</button>
+          <button class="a-btn a-skip" onclick="audioSkip(15)" title="+15 сек">⏩</button>
+          <div class="a-prog">
+            <span class="a-time" id="audioTimeCur">0:00</span>
+            <input type="range" id="audioSeek" min="0" max="100" value="0" step="0.1" oninput="audioSeekTo(this.value)" />
+            <span class="a-time" id="audioTimeTot">0:00</span>
+          </div>
+          <div class="a-vol">🔊 <input type="range" id="audioVol" min="0" max="1" step="0.05" value="1" oninput="setVol(this.value)" /></div>
+        </div>
+        <audio id="audioPlayer" preload="auto" style="display:none"></audio>
+        <div style="margin-top:14px"><a class="btn-download" id="dlMp3" href="#" download="podcast.mp3">⬇️ Скачать MP3</a></div>
+        <div style="margin-top:22px">
+          <div class="card-title" style="margin-bottom:8px">📋 Диалог подкаста</div>
+          <div class="timeline-list" id="timelineList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Видео -->
+    <div class="tab-content" id="tab-video">
+      <div class="media-card" id="videoCard">
+        <h3 style="margin-bottom:4px;font-size:18px">🎬 Видеоподкаст</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:16px">Анимированные слайды с Ken Burns эффектами</p>
+        <video controls id="videoPlayer" preload="auto"></video>
+        <a class="btn-download" id="dlMp4" href="#" download="podcast.mp4" style="margin-bottom:20px">⬇️ Скачать MP4</a>
+        <div style="margin-top:20px">
+          <div class="card-title" style="margin-bottom:8px">🎵 Сменить фоновую музыку</div>
+          <div class="track-list" id="trackList"></div>
+          <div class="rebuild-progress" id="rebuildProgress">
+            <div class="spinner"></div><span>Перегенерирую с новой музыкой...</span>
+          </div>
+        </div>
+      </div>
+      <div id="videoNotReady" class="media-card" style="display:none;text-align:center;padding:40px">
+        <div style="font-size:44px;margin-bottom:12px">⚠️</div>
+        <h3>Видео не создано</h3>
+        <p style="color:var(--text-muted);margin-top:6px">Выберите режим «Видеоподкаст» и попробуйте снова.</p>
+      </div>
+    </div>
+
+    <!-- PPTX -->
+    <div class="tab-content" id="tab-pptx">
+      <div class="media-card" id="pptxCard">
+        <h3 style="margin-bottom:4px;font-size:18px">📊 Презентация PPTX</h3>
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:18px">Слайды с AI-иллюстрациями. Открывается в PowerPoint и Google Slides.</p>
+        <a class="btn-download" id="dlPptx" href="#" download="podcast.pptx">⬇️ Скачать PPTX</a>
+      </div>
+      <div id="pptxNotReady" class="media-card" style="display:none;text-align:center;padding:40px">
+        <div style="font-size:44px;margin-bottom:12px">⚠️</div>
+        <h3>Слайды не созданы</h3>
+        <p style="color:var(--text-muted);margin-top:6px">Доступны только в режиме «Видеоподкаст».</p>
+      </div>
+    </div>
+  </div>
+</main>
+
+<!-- Voice toast -->
+<div id="voiceToast">
+  <span style="font-size:18px">🔊</span>
+  <span id="voiceToastLabel">Воспроизведение...</span>
+  <button id="voiceToastClose" onclick="stopVoiceToast()">✕</button>
+</div>
+
+<footer>PodCraft · Powered by OpenAI (Replit AI Integrations) · Без API ключей</footer>
+
+<script>
+const BASE = '{{ base_path }}';
+const MUSIC_POOL = {{ music_pool | tojson }};
+
+let currentJobId = null, eventSource = null, currentInputTab = 'text';
+let speechTimeline = [], audioPlaying = false;
+let musicOffset = 0, selectedMusicId = 'calm';
+let currentMusicAudio = null, currentMusicBtn = null;
+let currentVoiceAudio = null, currentVoiceBtn = null;
+
+// ── Тема ──────────────────────────────────────────────────────────────────
+function toggleTheme() {
+  const dark = document.documentElement.getAttribute('data-theme') === 'dark';
+  document.documentElement.setAttribute('data-theme', dark ? 'light' : 'dark');
+  document.getElementById('themeIcon').textContent = dark ? '🌙' : '☀️';
+  document.getElementById('themeLabel').textContent = dark ? 'Тёмная тема' : 'Светлая тема';
+}
+
+// ── Примеры ───────────────────────────────────────────────────────────────
+function toggleExamples() {
+  const p = document.getElementById('examplesPanel');
+  const open = p.classList.toggle('open');
+  document.getElementById('exArrow').textContent = open ? '▲' : '▼';
+}
+
+// ── Тип подкаста ──────────────────────────────────────────────────────────
+function selectMode(el) {
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  const mode = el.dataset.mode;
+  document.getElementById('podcast_mode').value = mode;
+  const isVideo = mode === 'video';
+  document.getElementById('styleCard').classList.toggle('style-hidden', !isVideo);
+  document.querySelectorAll('[data-video-only]').forEach(b => b.style.display = isVideo ? '' : 'none');
+  updateStepNums(isVideo);
+  document.getElementById('generateBtn').textContent = isVideo ? '🎬 Создать видеоподкаст' : '🎧 Создать аудиоподкаст';
+}
+
+function updateStepNums(hasVideo) {
+  const offset = hasVideo ? 1 : 0;
+  document.querySelectorAll('.step-lang-n').forEach(e => e.textContent = 6 + offset);
+  document.querySelectorAll('.step-dur-n').forEach(e => e.textContent = 7 + offset);
+  document.querySelectorAll('.step-mus-n').forEach(e => e.textContent = 8 + offset);
+}
+
+// ── Ввод ──────────────────────────────────────────────────────────────────
+function switchInputTab(tab, btn) {
+  currentInputTab = tab;
+  document.querySelectorAll('.input-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.input-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + tab).classList.add('active');
+}
+function handleFileSelect(el) {
+  if (el.files[0]) document.getElementById('fileName').textContent = '✅ ' + el.files[0].name;
+}
+const fd = document.getElementById('panel-file').querySelector('.file-drop');
+fd.addEventListener('dragover', e => { e.preventDefault(); fd.style.borderColor = 'var(--accent)'; });
+fd.addEventListener('dragleave', () => fd.style.borderColor = '');
+fd.addEventListener('drop', e => {
+  e.preventDefault(); fd.style.borderColor = '';
+  const f = e.dataTransfer.files[0];
+  if (f) { document.getElementById('fileInput').files = e.dataTransfer.files; handleFileSelect({ files: e.dataTransfer.files }); }
+});
+
+
+// ── Персонажи ─────────────────────────────────────────────────────────────
+function selectPersona(role, card) {
+  const grid = document.getElementById(role + 'PersonaGrid');
+  grid.querySelectorAll('.persona-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  document.getElementById(role + '_voice').value = card.dataset.voice;
+  document.getElementById(role + '_style').value = card.dataset.style;
+}
+
+function selectNarrator(card) {
+  document.querySelectorAll('#narratorGrid .narrator-card').forEach(c => c.classList.remove('selected'));
+  card.classList.add('selected');
+  document.getElementById('narrator_voice').value = card.dataset.voice;
+  document.getElementById('narrator_style').value = card.dataset.style;
+}
+
+// Синхронизировать имена ведущих → описание для диктора + клон-зоны
+document.getElementById('host_name').addEventListener('input', e => {
+  const v = e.target.value || 'Алексей';
+  document.getElementById('hostNameLbl').textContent = v;
+  document.getElementById('hdescHostName').textContent = v;
+  document.getElementById('hostNameForClone').textContent = v;
+});
+document.getElementById('guest_name').addEventListener('input', e => {
+  const v = e.target.value || 'Мария';
+  document.getElementById('guestNameLbl').textContent = v;
+  document.getElementById('hdescGuestName').textContent = v;
+  document.getElementById('guestNameForClone').textContent = v;
+});
+document.getElementById('narrator_name').addEventListener('input', e => {
+  const v = e.target.value || 'Диктор';
+  document.getElementById('narratorNameForClone').textContent = v;
+});
+
+// ── Клонирование голоса ───────────────────────────────────────────────────
+function handleVoiceSample(role, cap, input) {
+  const file = input.files[0];
+  if (!file) return;
+  const drop = document.getElementById('cloneDrop' + cap);
+  const label = document.getElementById('cloneLabel' + cap);
+  const preview = document.getElementById(role + 'SamplePreview');
+  const clearBtn = document.getElementById('clear' + cap + 'Sample');
+  const url = URL.createObjectURL(file);
+  preview.src = url;
+  preview.style.display = 'block';
+  drop.classList.add('has-file');
+  label.innerHTML = '✅ ' + file.name.substring(0, 22) + (file.name.length > 22 ? '…' : '') + '<span class="clone-badge">Загружен</span>';
+  clearBtn.style.display = 'inline-block';
+}
+
+function clearVoiceSample(role, cap) {
+  document.getElementById(role + 'VoiceSample').value = '';
+  const preview = document.getElementById(role + 'SamplePreview');
+  preview.src = '';
+  preview.style.display = 'none';
+  document.getElementById('cloneDrop' + cap).classList.remove('has-file');
+  document.getElementById('cloneLabel' + cap).textContent = 'Нажми или перетащи аудио';
+  document.getElementById('clear' + cap + 'Sample').style.display = 'none';
+}
+
+function cloneDragOver(event, cap) {
+  event.preventDefault();
+  document.getElementById('cloneDrop' + cap).classList.add('drag-over');
+}
+
+function cloneDragLeave(cap) {
+  document.getElementById('cloneDrop' + cap).classList.remove('drag-over');
+}
+
+function cloneDrop(event, role, cap) {
+  event.preventDefault();
+  cloneDragLeave(cap);
+  const file = event.dataTransfer.files[0];
+  if (!file || !file.type.startsWith('audio/')) return;
+  const input = document.getElementById(role + 'VoiceSample');
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  input.files = dt.files;
+  handleVoiceSample(role, cap, input);
+}
+
+// ── Стиль / Язык ──────────────────────────────────────────────────────────
+function selectStyle(el) {
+  document.querySelectorAll('.style-grid .style-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('selected_style').value = el.dataset.value;
+}
+function selectLang(el) {
+  document.querySelectorAll('#langGrid .lang-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+  document.getElementById('selected_language').value = el.dataset.value;
+}
+function updateDuration(val) { document.getElementById('durationVal').textContent = '~' + val + ' мин'; }
+
+// ── Музыка: превью + обновить ─────────────────────────────────────────────
+function renderMusic() {
+  const grid = document.getElementById('musicGrid');
+  grid.innerHTML = '';
+  const slice = MUSIC_POOL.slice(musicOffset, musicOffset + 3);
+  slice.forEach((t, i) => {
+    const isSel = t.id === selectedMusicId;
+    const div = document.createElement('div');
+    div.className = 'music-card' + (isSel ? ' selected' : '');
+    div.dataset.id = t.id;
+    div.dataset.url = t.url;
+    div.innerHTML = `
+      <div class="mtrack-name">${t.name}</div>
+      <div class="mtrack-mood">${t.mood || ''}</div>
+      <div class="music-card-footer">
+        <button class="btn-music-play" data-trackid="${t.id}" onclick="toggleMusicPreview('${t.id}','${t.url}',this,event)">▶ Слушать</button>
+      </div>`;
+    div.onclick = (e) => {
+      if (e.target.closest('.btn-music-play')) return;
+      document.querySelectorAll('.music-card').forEach(c => c.classList.remove('selected'));
+      div.classList.add('selected');
+      selectedMusicId = t.id;
+      document.getElementById('selected_music').value = t.id;
+    };
+    grid.appendChild(div);
+  });
+}
+
+function refreshMusic() {
+  stopMusicPreview();
+  musicOffset = (musicOffset + 3) % MUSIC_POOL.length;
+  // Keep current selection visible if possible
+  const nextSlice = MUSIC_POOL.slice(musicOffset, musicOffset + 3);
+  renderMusic();
+}
+
+function toggleMusicPreview(trackId, url, btn, event) {
+  event.stopPropagation();
+  if (currentMusicAudio && currentMusicBtn === btn && !currentMusicAudio.paused) {
+    stopMusicPreview();
+    return;
+  }
+  stopMusicPreview();
+  btn.textContent = '⏳...';
+  const audio = new Audio(url);
+  audio.volume = 0.4;
+  currentMusicAudio = audio;
+  currentMusicBtn = btn;
+  audio.oncanplay = () => {
+    btn.textContent = '⏸ Стоп';
+    btn.classList.add('playing');
+    audio.play();
+  };
+  audio.onended = () => { btn.textContent = '▶ Слушать'; btn.classList.remove('playing'); currentMusicAudio = null; currentMusicBtn = null; };
+  audio.onerror = () => { btn.textContent = '▶ Слушать'; btn.classList.remove('playing'); };
+  audio.load();
+}
+
+function stopMusicPreview() {
+  if (currentMusicAudio) { currentMusicAudio.pause(); currentMusicAudio = null; }
+  if (currentMusicBtn) { currentMusicBtn.textContent = '▶ Слушать'; currentMusicBtn.classList.remove('playing'); currentMusicBtn = null; }
+}
+
+// Init music — первый трек выбран по умолчанию
+renderMusic();
+selectedMusicId = MUSIC_POOL[0].id;
+document.getElementById('selected_music').value = MUSIC_POOL[0].id;
+
+// ── Голосовые превью ──────────────────────────────────────────────────────
+function playVoicePreview(voiceId, btn, event) {
+  event.stopPropagation();
+  if (currentVoiceAudio && currentVoiceBtn === btn && !currentVoiceAudio.paused) {
+    currentVoiceAudio.pause();
+    btn.textContent = '▶ Слушать'; btn.classList.remove('playing');
+    showVoiceToast(false); return;
+  }
+  if (currentVoiceAudio) { currentVoiceAudio.pause(); }
+  if (currentVoiceBtn) { currentVoiceBtn.textContent = '▶ Слушать'; currentVoiceBtn.classList.remove('playing','loading'); }
+  btn.textContent = '⏳...'; btn.classList.add('loading');
+  currentVoiceBtn = btn;
+  const audio = new Audio(`${BASE}/voice_preview/${voiceId}`);
+  currentVoiceAudio = audio;
+  audio.oncanplay = () => {
+    btn.textContent = '⏸ Пауза'; btn.classList.remove('loading'); btn.classList.add('playing');
+    const vname = btn.closest('.persona-card').querySelector('.pname').textContent;
+    showVoiceToast(true, vname);
+    audio.play();
+  };
+  audio.onended = () => { btn.textContent = '▶ Слушать'; btn.classList.remove('playing'); showVoiceToast(false); };
+  audio.onerror = () => { btn.textContent = '▶ Слушать'; btn.classList.remove('loading','playing'); };
+  audio.load();
+}
+function showVoiceToast(visible, name) {
+  const t = document.getElementById('voiceToast');
+  if (!visible) { t.classList.remove('visible'); return; }
+  document.getElementById('voiceToastLabel').textContent = `🔊 ${name}`;
+  t.classList.add('visible');
+}
+function stopVoiceToast() {
+  if (currentVoiceAudio) currentVoiceAudio.pause();
+  if (currentVoiceBtn) { currentVoiceBtn.textContent = '▶ Слушать'; currentVoiceBtn.classList.remove('playing','loading'); }
+  document.getElementById('voiceToast').classList.remove('visible');
+}
+
+// ── Генерация ─────────────────────────────────────────────────────────────
+function clearError() { document.getElementById('errorBanner').classList.remove('visible'); }
+function showError(msg) { const b = document.getElementById('errorBanner'); b.textContent = msg; b.classList.add('visible'); }
+
+async function startGeneration() {
+  clearError(); stopVoiceToast(); stopMusicPreview();
+  const formData = new FormData();
+  formData.append('podcast_mode', document.getElementById('podcast_mode').value);
+  formData.append('style', document.getElementById('selected_style').value);
+  formData.append('language', document.getElementById('selected_language').value);
+  formData.append('host_voice', document.getElementById('host_voice').value);
+  formData.append('guest_voice', document.getElementById('guest_voice').value);
+  formData.append('host_name', document.getElementById('host_name').value || 'Ведущий');
+  formData.append('guest_name', document.getElementById('guest_name').value || 'Гость');
+  formData.append('host_style', document.getElementById('host_style').value);
+  formData.append('guest_style', document.getElementById('guest_style').value);
+  formData.append('narrator_voice', document.getElementById('narrator_voice').value);
+  formData.append('narrator_name', document.getElementById('narrator_name').value || 'Диктор');
+  formData.append('narrator_style', document.getElementById('narrator_style').value);
+  formData.append('host_description', document.getElementById('host_description').value);
+  formData.append('guest_description', document.getElementById('guest_description').value);
+  formData.append('duration', document.getElementById('duration').value);
+  formData.append('music_id', document.getElementById('selected_music').value);
+
+  // Голосовые образцы для клонирования
+  const hostSampleFile = document.getElementById('hostVoiceSample').files[0];
+  const guestSampleFile = document.getElementById('guestVoiceSample').files[0];
+  const narratorSampleFile = document.getElementById('narratorVoiceSample').files[0];
+  if (hostSampleFile) formData.append('host_voice_sample', hostSampleFile);
+  if (guestSampleFile) formData.append('guest_voice_sample', guestSampleFile);
+  if (narratorSampleFile) formData.append('narrator_voice_sample', narratorSampleFile);
+
+  if (currentInputTab === 'text') {
+    const t = document.getElementById('text_input').value;
+    if (!t.trim()) { showError('Введите текст для генерации'); return; }
+    formData.append('text_input', t);
+  } else if (currentInputTab === 'file') {
+    const fi = document.getElementById('fileInput');
+    if (!fi.files[0]) { showError('Выберите файл'); return; }
+    formData.append('file_upload', fi.files[0]);
+  } else {
+    const u = document.getElementById('url_input').value;
+    if (!u.trim()) { showError('Введите URL'); return; }
+    formData.append('url_input', u);
+  }
+
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('formSection').style.display = 'none';
+  document.getElementById('progressSection').classList.add('visible');
+  document.getElementById('resultsSection').classList.remove('visible');
+
+  try {
+    const resp = await fetch(`${BASE}/generate`, { method: 'POST', body: formData });
+    const data = await resp.json();
+    if (data.error) { showError(data.error); resetForm(); return; }
+    currentJobId = data.job_id;
+    startPolling(currentJobId);
+  } catch (e) { showError('Ошибка: ' + e.message); resetForm(); }
+}
+
+function resetForm() {
+  document.getElementById('generateBtn').disabled = false;
+  document.getElementById('formSection').style.display = '';
+  document.getElementById('progressSection').classList.remove('visible');
+}
+
+// ── Прогресс SSE ──────────────────────────────────────────────────────────
+const STEP_ORDER = ['dialogue','tts','audio','images','video','pptx'];
+function startPolling(jobId) {
+  if (eventSource) eventSource.close();
+  eventSource = new EventSource(`${BASE}/status/${jobId}`);
+  eventSource.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    document.getElementById('progressMsg').textContent = data.message || '';
+    document.getElementById('progressPct').textContent = (data.percent || 0) + '%';
+    document.getElementById('progressFill').style.width = (data.percent || 0) + '%';
+    const curStep = data.step;
+    STEP_ORDER.forEach(s => {
+      const el = document.getElementById('step-' + s); if (!el) return;
+      el.classList.remove('active','done');
+      if (STEP_ORDER.indexOf(s) < STEP_ORDER.indexOf(curStep)) el.classList.add('done');
+      else if (s === curStep) el.classList.add('active');
+    });
+    if (data.done) { eventSource.close(); onDone(data); }
+    if (data.status === 'error') { eventSource.close(); showError('Ошибка: ' + (data.error_detail || '')); resetForm(); }
+  };
+  eventSource.onerror = () => eventSource.close();
+}
+
+function onDone(data) {
+  document.getElementById('progressSection').classList.remove('visible');
+  document.getElementById('resultsSection').classList.add('visible');
+  document.getElementById('resultsSection').scrollIntoView({ behavior: 'smooth' });
+  document.getElementById('generateBtn').disabled = false;
+
+  speechTimeline = data.speech_timeline || [];
+  const mode = data.podcast_mode || 'audio';
+  const hName = data.host_name || 'Ведущий';
+  const gName = data.guest_name || 'Гость';
+
+  if (data.has_mp3) {
+    const url = `${BASE}/download/${currentJobId}/mp3`;
+    document.getElementById('audioPlayer').src = url;
+    document.getElementById('dlMp3').href = url;
+    setupAudioPlayer(hName, gName);
+    buildTimeline(speechTimeline);
+  }
+
+  const showVideo = mode === 'video';
+  document.getElementById('tabVideoBtn').style.display = showVideo ? '' : 'none';
+  document.getElementById('tabPptxBtn').style.display = showVideo ? '' : 'none';
+
+  if (data.has_mp4) {
+    const vu = `${BASE}/download/${currentJobId}/mp4`;
+    document.getElementById('videoPlayer').src = vu;
+    document.getElementById('dlMp4').href = vu;
+    document.getElementById('videoCard').style.display = '';
+    document.getElementById('videoNotReady').style.display = 'none';
+    buildTrackList(data.music_tracks || []);
+  } else {
+    document.getElementById('videoCard').style.display = 'none';
+    document.getElementById('videoNotReady').style.display = '';
+  }
+
+  if (data.has_pptx) {
+    document.getElementById('dlPptx').href = `${BASE}/download/${currentJobId}/pptx`;
+    document.getElementById('pptxCard').style.display = '';
+    document.getElementById('pptxNotReady').style.display = 'none';
+  } else {
+    document.getElementById('pptxCard').style.display = 'none';
+    document.getElementById('pptxNotReady').style.display = '';
+  }
+
+  const warns = [...(data.tts_errors||[]), ...(data.image_errors||[]), ...(data.errors||[])];
+  if (warns.length) {
+    const wb = document.getElementById('warnBox');
+    wb.textContent = '⚠️ ' + warns.slice(0,2).join('; ');
+    wb.classList.add('visible');
+  }
+}
+
+// ── Аудиоплеер ───────────────────────────────────────────────────────────
+function setupAudioPlayer(hName, gName) {
+  const audio = document.getElementById('audioPlayer');
+  audio.addEventListener('timeupdate', onTimeUpdate);
+  audio.addEventListener('ended', () => {
+    document.getElementById('audioPlayBtn').textContent = '▶';
+    document.getElementById('waveform').classList.remove('playing');
+    audioPlaying = false;
+  });
+  audio.addEventListener('loadedmetadata', () => {
+    document.getElementById('audioTimeTot').textContent = fmt(audio.duration);
+    document.getElementById('audioSeek').max = audio.duration;
+  });
+  if (speechTimeline.length) {
+    const f = speechTimeline[0];
+    setSpeaker(f.speaker, f.name, f.text);
+  }
+}
+
+function onTimeUpdate() {
+  const audio = document.getElementById('audioPlayer');
+  const t = audio.currentTime;
+  document.getElementById('audioTimeCur').textContent = fmt(t);
+  document.getElementById('audioSeek').value = t;
+  const e = speechTimeline.find(e => t >= e.start_s && t < e.end_s);
+  if (e) setSpeaker(e.speaker, e.name, e.text);
+  let ai = -1;
+  speechTimeline.forEach((e, i) => { if (t >= e.start_s && t < e.end_s) ai = i; });
+  document.querySelectorAll('.tl-item').forEach((el, i) => {
+    el.classList.toggle('active', i === ai);
+    if (i === ai) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
+}
+
+function setSpeaker(role, name, text) {
+  document.getElementById('speakerAv').className = 'speaker-av ' + role;
+  const icons = { host: '🎙', guest: '🎧', narrator: '📢' };
+  const roleLabels = { host: 'ВЕДУЩИЙ', guest: 'ГОСТЬ', narrator: 'ДИКТОР' };
+  document.getElementById('speakerAv').textContent = icons[role] || '🎙';
+  document.getElementById('speakerRole').textContent = roleLabels[role] || 'ВЕДУЩИЙ';
+  document.getElementById('speakerName').textContent = name || '';
+  document.getElementById('speakerText').textContent = text || '';
+  const wf = document.getElementById('waveform');
+  wf.className = 'waveform ' + role + (audioPlaying ? ' playing' : '');
+}
+
+function toggleAudio() {
+  const audio = document.getElementById('audioPlayer');
+  const btn = document.getElementById('audioPlayBtn');
+  const wf = document.getElementById('waveform');
+  if (audio.paused) {
+    audio.play(); btn.textContent = '⏸'; wf.classList.add('playing'); audioPlaying = true;
+  } else {
+    audio.pause(); btn.textContent = '▶'; wf.classList.remove('playing'); audioPlaying = false;
+  }
+}
+function audioSkip(sec) {
+  const a = document.getElementById('audioPlayer');
+  a.currentTime = Math.max(0, Math.min(a.duration, a.currentTime + sec));
+}
+function audioSeekTo(val) { document.getElementById('audioPlayer').currentTime = parseFloat(val); }
+function setVol(val) { document.getElementById('audioPlayer').volume = parseFloat(val); }
+function fmt(s) {
+  if (!s || isNaN(s)) return '0:00';
+  return Math.floor(s/60) + ':' + (Math.floor(s%60) < 10 ? '0' : '') + Math.floor(s%60);
+}
+
+// ── Таймлайн ─────────────────────────────────────────────────────────────
+function buildTimeline(tl) {
+  const list = document.getElementById('timelineList');
+  list.innerHTML = '';
+  tl.forEach((e, i) => {
+    const div = document.createElement('div');
+    div.className = 'tl-item';
+    div.onclick = () => {
+      document.getElementById('audioPlayer').currentTime = e.start_s;
+      if (document.getElementById('audioPlayer').paused) toggleAudio();
+    };
+    const spIcons = { host: '🎙', guest: '🎧', narrator: '📢' };
+    if (e.speaker === 'narrator') div.classList.add('narrator-line');
+    div.innerHTML = `
+      <div class="tl-av ${e.speaker}">${spIcons[e.speaker]||'🎙'}</div>
+      <div style="flex:1;min-width:0">
+        <div class="tl-name ${e.speaker}">${e.name||''}</div>
+        <div class="tl-txt">${e.text||''}</div>
+      </div>
+      <div style="font-size:10px;color:var(--text-muted);flex-shrink:0;margin-left:6px">${fmt(e.start_s)}</div>`;
+    list.appendChild(div);
+  });
+}
+
+// ── Табы ─────────────────────────────────────────────────────────────────
+function switchTab(tab, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+}
+
+// ── Смена музыки ─────────────────────────────────────────────────────────
+function buildTrackList(tracks) {
+  const list = document.getElementById('trackList');
+  list.innerHTML = '';
+  tracks.forEach((t, i) => {
+    const div = document.createElement('div');
+    div.className = 'track-item' + (i === 0 ? ' active' : '');
+    div.dataset.id = t.id;
+    div.innerHTML = `<div class="track-name">${t.name}</div>${i===0?'<span class="track-status">Текущий</span>':''}`;
+    div.onclick = () => rebuildWithMusic(t.id, div);
+    list.appendChild(div);
+  });
+}
+async function rebuildWithMusic(musicId, clickedEl) {
+  if (!currentJobId) return;
+  document.querySelectorAll('.track-item').forEach(el => {
+    el.classList.remove('active');
+    const s = el.querySelector('.track-status');
+    if (s) s.remove();
+  });
+  clickedEl.classList.add('active');
+  const b = document.createElement('span'); b.className = 'track-status'; b.textContent = 'Текущий';
+  clickedEl.appendChild(b);
+  document.getElementById('rebuildProgress').classList.add('visible');
+  try {
+    const r = await fetch(`${BASE}/rebuild_video/${currentJobId}`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({music_id: musicId})
+    });
+    const d = await r.json();
+    if (d.ok) {
+      const ts = Date.now();
+      document.getElementById('audioPlayer').src = `${BASE}/download/${currentJobId}/mp3?t=${ts}`;
+      document.getElementById('videoPlayer').src = `${BASE}/download/${currentJobId}/mp4?t=${ts}`;
+    }
+  } finally {
+    document.getElementById('rebuildProgress').classList.remove('visible');
+  }
+}
+</script>
+</body>
+</html>
