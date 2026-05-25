@@ -12,6 +12,24 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "podcraft-secret-2025")
 
 BASE_PATH = os.environ.get("BASE_PATH", "")
+
+
+class PrefixMiddleware:
+    def __init__(self, wsgi_app, prefix=""):
+        self.app = wsgi_app
+        self.prefix = prefix.rstrip("/")
+
+    def __call__(self, environ, start_response):
+        path = environ.get("PATH_INFO", "")
+        if self.prefix and path.startswith(self.prefix):
+            environ["PATH_INFO"] = path[len(self.prefix):] or "/"
+            environ["SCRIPT_NAME"] = self.prefix
+        return self.app(environ, start_response)
+
+
+if BASE_PATH:
+    app.wsgi_app = PrefixMiddleware(app.wsgi_app, prefix=BASE_PATH)
+
 OUTPUTS_DIR = os.path.join(os.path.dirname(__file__), "outputs")
 os.makedirs(OUTPUTS_DIR, exist_ok=True)
 

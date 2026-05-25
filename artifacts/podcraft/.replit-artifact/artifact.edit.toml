@@ -1,17 +1,12 @@
-kind = "web"
-  previewPath = "/podcraft"
-  title = "PodCraft"
-  version = "1.0.0"
-  id = "podcraft_app_001"
+kind = "api"
+previewPath = "/podcraft"
+title = "PodCraft"
+version = "1.0.0"
 
-  [[services]]
-  localPort = 5100
-  name = "PodCraft"
-  paths = ["/podcraft"]
+[[services]]
+localPort = 5000
+name = "PodCraft Flask"
+paths = ["/podcraft"]
 
-  [services.development]
-  run = "bash -c 'cd artifacts/podcraft && pip install -q -r requirements.txt && python app.py'"
-
-  [services.production.run]
-  args = ["bash", "-c", "cd artifacts/podcraft && gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 300"]
-  
+[services.development]
+run = "cd artifacts/podcraft && PORT=5000 BASE_PATH=/podcraft python app.py"
