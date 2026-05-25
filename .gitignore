@@ -47,3 +47,10 @@ Thumbs.db
 # Replit
 .cache/
 .local/
+artifacts/podcraft/outputs/
+artifacts/podcraft/voice_samples/
+.pythonlibs/
+node_modules/
+__pycache__/
+*.pyc
+.env
