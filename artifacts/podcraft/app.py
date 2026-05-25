@@ -415,6 +415,94 @@ def voice_preview(voice_id: str):
     return send_file(cache_path, mimetype="audio/mpeg")
 
 
+@app.route("/github_push", methods=["POST"])
+def github_push():
+    import subprocess, tempfile, shutil
+    data = request.get_json(force=True)
+    token = (data.get("token") or "").strip()
+    repo_url = (data.get("repo_url") or "").strip()
+    commit_msg = (data.get("commit_msg") or "Update from PodCraft").strip()
+    branch = (data.get("branch") or "main").strip()
+
+    if not token:
+        return jsonify({"ok": False, "error": "Токен не указан"}), 400
+    if not repo_url:
+        return jsonify({"ok": False, "error": "URL репозитория не указан"}), 400
+
+    # Normalise URL: insert token for HTTPS auth
+    if repo_url.startswith("https://github.com/"):
+        path = repo_url[len("https://github.com/"):]
+        auth_url = f"https://{token}@github.com/{path}"
+    elif repo_url.startswith("git@github.com:"):
+        return jsonify({"ok": False, "error": "Используйте HTTPS ссылку (https://github.com/...), а не SSH"}), 400
+    else:
+        auth_url = repo_url
+
+    workspace_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    git_dir = os.path.join(workspace_root, ".git")
+
+    env = {**os.environ, "GIT_AUTHOR_NAME": "PodCraft", "GIT_AUTHOR_EMAIL": "podcraft@replit.app",
+           "GIT_COMMITTER_NAME": "PodCraft", "GIT_COMMITTER_EMAIL": "podcraft@replit.app"}
+
+    def run(cmd, **kwargs):
+        return subprocess.run(cmd, capture_output=True, text=True, env=env, **kwargs)
+
+    try:
+        # Init repo if needed
+        if not os.path.exists(git_dir):
+            r = run(["git", "init", "-b", branch], cwd=workspace_root)
+            if r.returncode != 0:
+                run(["git", "init"], cwd=workspace_root)
+                run(["git", "checkout", "-b", branch], cwd=workspace_root)
+        else:
+            # Try to switch/create branch
+            run(["git", "checkout", "-B", branch], cwd=workspace_root)
+
+        # .gitignore — exclude big runtime dirs
+        gi_path = os.path.join(workspace_root, ".gitignore")
+        gi_entries = [
+            "artifacts/podcraft/outputs/",
+            "artifacts/podcraft/voice_samples/",
+            ".pythonlibs/",
+            "node_modules/",
+            "__pycache__/",
+            "*.pyc",
+            ".env",
+        ]
+        existing = open(gi_path).read() if os.path.exists(gi_path) else ""
+        with open(gi_path, "a") as f:
+            for entry in gi_entries:
+                if entry not in existing:
+                    f.write(entry + "\n")
+
+        run(["git", "add", "-A"], cwd=workspace_root)
+
+        status = run(["git", "status", "--porcelain"], cwd=workspace_root)
+        if not status.stdout.strip():
+            return jsonify({"ok": True, "message": "Нет изменений для коммита — всё уже актуально на GitHub"})
+
+        r = run(["git", "commit", "-m", commit_msg], cwd=workspace_root)
+        if r.returncode != 0 and "nothing to commit" not in r.stdout:
+            return jsonify({"ok": False, "error": f"Ошибка коммита: {r.stderr or r.stdout}"}), 500
+
+        # Set remote
+        run(["git", "remote", "remove", "origin"], cwd=workspace_root)
+        run(["git", "remote", "add", "origin", auth_url], cwd=workspace_root)
+
+        r = run(["git", "push", "-u", "origin", branch, "--force"], cwd=workspace_root)
+        if r.returncode != 0:
+            err = r.stderr or r.stdout
+            if "Authentication failed" in err or "Invalid username" in err:
+                return jsonify({"ok": False, "error": "Ошибка авторизации — проверьте токен"}), 401
+            if "repository not found" in err.lower() or "does not exist" in err.lower():
+                return jsonify({"ok": False, "error": "Репозиторий не найден — проверьте URL"}), 404
+            return jsonify({"ok": False, "error": f"Ошибка пуша: {err[:400]}"}), 500
+
+        return jsonify({"ok": True, "message": f"Успешно запушено в {repo_url} ({branch})"})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
